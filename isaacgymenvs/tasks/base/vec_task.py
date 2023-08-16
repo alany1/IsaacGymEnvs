@@ -52,6 +52,8 @@ import sys
 import abc
 from abc import ABC
 
+from .keyboard_commands import SimpleKeyboardCommands
+
 EXISTING_SIM = None
 SCREEN_CAPTURE_RESOLUTION = (1027, 768)
 
@@ -285,6 +287,31 @@ class VecTask(Env):
                 self.viewer, gymapi.KEY_V, "toggle_viewer_sync")
             self.gym.subscribe_viewer_keyboard_event(
                 self.viewer, gymapi.KEY_R, "record_frames")
+            self.gym.subscribe_viewer_keyboard_event(
+                self.viewer, gymapi.KEY_W, "FORWARD"
+            )
+            self.gym.subscribe_viewer_keyboard_event(
+                self.viewer, gymapi.KEY_S, "BACKWARD"
+            )
+            self.gym.subscribe_viewer_keyboard_event(
+                self.viewer, gymapi.KEY_D, "RIGHT"
+            )
+            self.gym.subscribe_viewer_keyboard_event(
+                self.viewer, gymapi.KEY_A, "LEFT"
+            )
+            self.gym.subscribe_viewer_keyboard_event(
+                self.viewer, gymapi.KEY_LEFT, "YAW_LEFT"
+            )
+            self.gym.subscribe_viewer_keyboard_event(
+                self.viewer, gymapi.KEY_RIGHT, "YAW_RIGHT"
+            )
+            self.gym.subscribe_viewer_mouse_event(
+                self.viewer, gymapi.MOUSE_RIGHT_BUTTON, "MOUSE_RIGHT"
+            )
+
+            self.keyboard_commander = SimpleKeyboardCommands()
+
+
 
             # set the camera position based on up axis
             sim_params = self.gym.get_sim_params(self.sim)
@@ -462,13 +489,27 @@ class VecTask(Env):
                 sys.exit()
 
             # check for keyboard events
-            for evt in self.gym.query_viewer_action_events(self.viewer):
+            viewer_events = self.gym.query_viewer_action_events(self.viewer)
+            viewer_actions = [evt.action for evt in viewer_events]
+
+            # print(move_perspective, viewer_actions)
+            for evt in viewer_events:
                 if evt.action == "QUIT" and evt.value > 0:
                     sys.exit()
                 elif evt.action == "toggle_viewer_sync" and evt.value > 0:
                     self.enable_viewer_sync = not self.enable_viewer_sync
                 elif evt.action == "record_frames" and evt.value > 0:
                     self.record_frames = not self.record_frames
+                
+                self.keyboard_commander.update_command(evt.action)
+                    
+                # print(evt.action)
+                # print(self.keyboard_commander.command_state)
+
+                # Set command of agent 0
+                self.set_actor_command(0, self.keyboard_commander)
+               
+                
 
             # fetch results
             if self.device != 'cpu':
@@ -476,6 +517,12 @@ class VecTask(Env):
 
             # step graphics
             if self.enable_viewer_sync:
+
+                cam_target = gymapi.Vec3(*self.root_states[0, :3])
+                cam_position = gymapi.Vec3(*(self.root_states[0, :3] - torch.tensor([0, 2, -2.], device=self.rl_device)))
+
+
+                self.gym.viewer_camera_look_at(self.viewer, self.envs[0], cam_position, cam_target)
                 self.gym.step_graphics(self.sim)
                 self.gym.draw_viewer(self.viewer, self.sim, True)
 

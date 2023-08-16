@@ -159,6 +159,15 @@ class AnymalTerrain(VecTask):
 
         self.reset_idx(torch.arange(self.num_envs, device=self.device))
         self.init_done = True
+        #self.gym.set_light_parameters(self.sim, 0, gymapi.Vec3(0.5, 0.5, 0.5), gymapi.Vec3(0., 0., 0.), gymapi.Vec3(0, 0, 1))
+        #self.gym.set_light_parameters(self.sim, 1, gymapi.Vec3(0., 0., 0.), gymapi.Vec3(0, 0., 0.), gymapi.Vec3(1, 2, 3))
+        #self.gym.set_light_parameters(self.sim, 2, gymapi.Vec3(0., 0., 0.), gymapi.Vec3(0, 0., 0.), gymapi.Vec3(1, 2, 3))
+
+    def set_actor_command(self, env_id, keyboard_commander):
+        cmd = keyboard_commander.command_state
+
+        self.commands[env_id:env_id+1, :3] = cmd
+        print(f"Setting command to {cmd}")
 
     def create_sim(self):
         self.up_axis_idx = 2 # index of up axis: Y=1, Z=2
